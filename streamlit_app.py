@@ -93,11 +93,41 @@ prompt_template = ChatPromptTemplate.from_template(
     "Provide answers based on these indexes, including sources and metadata.\n\n"
     "Query: {input}\nAnswer:"
 )
+
+custom_prompt_template = ChatPromptTemplate.from_template(
+    "You are a highly knowledgeable medical assistant. Your goal is to provide detailed, evidence-based responses "
+    "to queries related to SMPC, medical guidelines, and journal information.\n\n"
+    "You have access to the following tools:\n"
+    "{tools}\n\n"
+    "1. SMPC Query Tool: For searching the medication summary of product characteristics for information about any medication.\n"
+    "2. Guidance Query Tool: Should only be used when the query relates to Lynch syndrome for searching medical guidelines related to Lynch syndrome.\n"
+    "3. Journal Query Tool: Should only be used when the query relates to Lynch syndrome for searching medical journals related to Lynch syndrome.\n\n"
+    "When you are uncertain or need specific information, use these tools to find relevant details.\n\n"
+    "Follow these steps:\n"
+    "- Always first review the previous conversation to understand if there is missing context, such as a medication name or topic.\n"
+    "- If the current query seems incomplete (e.g., missing medication name), try to infer it from the chat history.\n"
+    "- If you cannot infer the missing details, ask the user to clarify before proceeding.\n"
+    "- Think step by step to understand the question.\n"
+    "- If additional information is needed, specify an action to take with a tool.\n"
+    "- Use the tools as necessary to gather information and then provide the final answer.\n\n"
+    "Previous conversation:\n{chat_history}\n\n"
+    "Current Query: {input}\n\n"
+    "Use the following tools if needed:\n"
+    "{tool_names}\n\n"
+    "Begin your reasoning step-by-step and specify when you take an action:\n\n"
+    "Thought: Review the previous conversation to understand the context. What do you want to do first?\n"
+    "{agent_scratchpad}\n\n"
+    "If an action is needed, use the following format:\n"
+    "Action: [Name of Tool]\nAction Input: [Input to the Tool]\n\n"
+    "If you need more information from the user, ask them clearly.\n\n"
+    "If no action is needed, provide the final answer."
+)
+
 # Load the REACT prompt
 prompt = hub.pull("hwchase17/react")
-
+print(prompt, "prompt")
 # Create the REACT agent
-agent = create_react_agent(tools=tools, llm=llm, prompt=prompt)
+agent = create_react_agent(tools=tools, llm=llm, prompt=custom_prompt_template)
 agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True)
 # Streamlit UI
 st.title("Medical Query Assistant")

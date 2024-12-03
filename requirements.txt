@@ -1,0 +1,12 @@
+streamlit
+openai
+langchain
+langchain-openai
+pydantic
+llama-index
+pinecone-client
+numpy
+pandas
+langchain-community
+llama-index-vector-stores-pinecone
+langsmith

@@ -11,8 +11,6 @@ from pinecone import Pinecone
 import logging
 import warnings
 
-
-
 warnings.filterwarnings("ignore", category=UserWarning, module="langsmith")
 logging.basicConfig(level=logging.INFO)
 
@@ -20,9 +18,6 @@ logging.basicConfig(level=logging.INFO)
 pinecone_api_key = st.secrets["default"]["PINECONE_API_KEY"]  # Securely manage keys
 openai_api_key = st.secrets["default"]["OPENAI_API_KEY"]
 langchain_api_key =  st.secrets["default"]["LANGCHAIN_API_KEY"]
-
-st.write("Using OpenAI API Key:", openai_api_key)
-st.write("Using Pinecone API Key:", pinecone_api_key)
 
 # Pinecone setup
 index_names = {"smpc": "smpc", "guidelines": "guidelines", "journals": "journals"}

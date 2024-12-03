@@ -2,17 +2,24 @@ import streamlit as st
 from langchain import hub
 from langchain.agents import create_react_agent, AgentExecutor, Tool
 from langchain_openai import ChatOpenAI
+from langchain.callbacks.manager import CallbackManager
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from llama_index.core import VectorStoreIndex
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.embeddings.openai import OpenAIEmbedding
 from pinecone import Pinecone
+from callback_handler import StreamlitCallbackHandler
 import logging
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="langsmith")
 logging.basicConfig(level=logging.INFO)
+
+# Initialize callback handler
+callback_handler = StreamlitCallbackHandler()
+# Set up the callback manager
+callback_manager = CallbackManager(handlers=[callback_handler])
 
 # Access the secrets
 pinecone_api_key = st.secrets["default"]["PINECONE_API_KEY"]  # Securely manage keys
@@ -53,10 +60,13 @@ def create_query_tool(index_name, tool_name, description):
 
             # Extract response and metadata
             response_text = results.response if results.response else "No relevant information found."
-            metadata_list = [
-                f"Source: {node.node.metadata.get('source', 'Unknown Source')}"
-                for node in results.source_nodes
-            ]
+            metadata_list = []
+            for node in results.source_nodes:
+                source_info = node.node.metadata.get("source", "Unknown Source")
+                medication_name = node.node.metadata.get("medication_name", "Unknown Medication")
+                section_title = node.node.metadata.get("section_title", "Unknown Section")
+                title = node.node.metadata.get("title", "Unknown Title")
+                metadata_list.append(f"Source: {source_info} - {medication_name} / {section_title} - {title}")
             formatted_metadata = "\n".join(metadata_list)
             return f"Response: {response_text}\n\nMetadata:\n{formatted_metadata}"
         except Exception as e:
@@ -88,7 +98,7 @@ prompt = hub.pull("hwchase17/react")
 
 # Create the REACT agent
 agent = create_react_agent(tools=tools, llm=llm, prompt=prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True)
+agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True)
 # Streamlit UI
 st.title("Medical Query Assistant")
 query = st.text_area("Enter your query here:", height=200)
@@ -96,10 +106,35 @@ if st.button("Submit Query"):
     with st.spinner("Processing your query..."):
         try:
             # Invoke the agent with the query
-            response = agent_executor.invoke({"input": query})
+            response = agent_executor.invoke({
+                "input": query,
+                "chat_history": "Human: Hi! My name is Bob\nAI: Hello Bob! Nice to meet you",
+            }, {"callbacks": [callback_handler]})
+
+            # Display final response
             st.success("Query Processed!")
             st.text_area("Response", response['output'], height=300)
+            # Display logs
+            logs = callback_handler.get_logs()
+            if logs:
+                log_content = "\n".join([f"<div>{log}</div>" for log in logs])
+            else:
+                log_content = "<div>No intermediate steps captured.</div>"
+            st.subheader("Intermediate Steps")
+            # Use custom HTML and CSS to make the container scrollable
+            st.markdown(
+                f"""
+                <div style="height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+                    {log_content}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
         except Exception as e:
             # Log and display errors
-            logging.error(f"Error occurred during query processing: {e}")
             st.error(f"An error occurred: {e}")
+            logging.error(f"Error occurred during query processing: {e}")
+            logs = callback_handler.get_logs()
+            for log in logs:
+                st.write(log)

@@ -1,0 +1,43 @@
+**Multidisciplinary Team (MDT) Meeting Summary - Pre-MDT and Post-MDT Comparison**
+
+**Patient Information (Summary):**
+- **Name**: Mrs. Margaret Johnson, 74 years old
+- **Diagnosis**: Lynch syndrome (MLH1 mutation)
+- **Comorbidities**: Type 2 Diabetes, Hypertension, Chronic Kidney Disease (Stage 3), Osteoarthritis
+- **Past Medical History**: Colorectal cancer (resected 8 years ago), total hysterectomy (due to endometrial cancer 10 years ago), ongoing management of diabetes and hypertension
+
+### **Pre-MDT Review (AI-Generated Potential Discussion Points)**
+
+**Presenting Concerns:**
+Mrs. Johnson presents with gastrointestinal symptoms, including intermittent rectal bleeding and abdominal discomfort, which could indicate recurrence or a new malignancy, given her Lynch syndrome and history of colorectal cancer. Additionally, her osteoarthritis has led to reduced mobility, affecting her overall quality of life.
+
+**Potential Key Discussion Points:**
+
+1. **Surveillance and Screening**
+   - **Colorectal Surveillance**: Consider recommending an urgent colonoscopy to evaluate the source of rectal bleeding and assess for recurrence of colorectal cancer.
+   - **Upper GI Screening**: Given the abdominal discomfort, an upper endoscopy could be proposed to rule out other GI malignancies associated with Lynch syndrome.
+   - **Frequency of Surveillance**: Discuss whether reducing the frequency of invasive procedures might be appropriate, depending on findings and patient tolerance, especially considering her comorbidities and advanced age.
+
+2. **Management of Comorbidities**
+   - **Diabetes and Hypertension**: Optimize glycemic and blood pressure control to reduce procedural risks. Consider involving an endocrinologist to review her current management plan.
+   - **Chronic Kidney Disease**: Recommend a nephrology consultation to assess kidney function, especially if any procedure may involve contrast.
+   - **Osteoarthritis**: Explore options for pain management, including physiotherapy and possible referral to a pain specialist to improve mobility and quality of life.
+
+3. **Genetic Counseling and Family Considerations**
+   - Given her Lynch syndrome, suggest genetic counseling for her children and grandchildren to assess their cancer risk and recommend appropriate genetic testing.
+
+4. **Psychosocial Support**
+   - Address her anxiety related to her health and potential new cancers. Consider a referral to a counselor with experience in cancer-related anxiety, as well as connecting her with Lynch syndrome support groups.
+
+5. **Lifestyle and Risk Reduction**
+   - Recommend dietary changes to help manage both her diabetes and cancer risk, such as a high-fiber, low-sugar diet. Encourage gentle physical activities as tolerated.
+   - Evaluate the potential use of aspirin as a chemopreventive agent for colorectal cancer, while weighing the risks of gastrointestinal bleeding.
+
+### **Post-MDT Review Summary**
+
+**Key Discussion Points:**
+
+1. **Surveillance and Screening**
+   - **Colorectal Surveillance**: Given Mrs. Johnson's history of colorectal cancer and Lynch syndrome, it was recommended to conduct a colonoscopy as soon as possible to evaluate the source of rectal bleeding.
+   - **Upper GI Screening**: Given the recent abdominal discomfort, an upper endoscopy was also recommended to rule out any gastric malignancy, considering Lynch syndrome can elevate risks for other gastrointestinal cancers.
+   - **Frequency**: Given her advanced age and multiple comorbidities, the team discussed modifying the frequency of inv

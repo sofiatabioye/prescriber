@@ -101,19 +101,35 @@ agent = create_react_agent(tools=tools, llm=llm, prompt=prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True)
 # Streamlit UI
 st.title("Medical Query Assistant")
+# Initialize session state for chat history
+if 'chat_history' not in st.session_state:
+    st.session_state['chat_history'] = []
+
 query = st.text_area("Enter your query here:", height=200)
 if st.button("Submit Query"):
     with st.spinner("Processing your query..."):
         try:
+            # Prepare the chat history string
+            chat_history = "\n".join(st.session_state['chat_history'])
             # Invoke the agent with the query
             response = agent_executor.invoke({
                 "input": query,
-                "chat_history": "Human: Hi! My name is Bob\nAI: Hello Bob! Nice to meet you",
+                "chat_history": chat_history,
             }, {"callbacks": [callback_handler]})
 
-            # Display final response
+           # Extract and display the final response
+            final_response = response['output']
             st.success("Query Processed!")
-            st.text_area("Response", response['output'], height=300)
+            st.text_area("Response", final_response, height=300)
+
+            # Update and store chat history
+            st.session_state['chat_history'].append(f"Human: {query}")
+            st.session_state['chat_history'].append(f"AI: {final_response}")
+
+            # Display chat history
+            st.subheader("Chat History")
+            st.text_area("Chat History", chat_history + f"\nHuman: {query}\nAI: {final_response}", height=300)
+
             # Display logs
             logs = callback_handler.get_logs()
             if logs:

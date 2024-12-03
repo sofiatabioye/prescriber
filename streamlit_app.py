@@ -10,6 +10,7 @@ from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.embeddings.openai import OpenAIEmbedding
 from pinecone import Pinecone
 from callback_handler import StreamlitCallbackHandler
+from load_queries import load_queries
 import logging
 import warnings
 
@@ -130,19 +131,47 @@ custom_prompt_template = ChatPromptTemplate.from_template(
     "Final Answer: [Your response here]"
 )
 
+
 # Load the REACT prompt
 prompt = hub.pull("hwchase17/react")
 print(prompt, "prompt")
 # Create the REACT agent
 agent = create_react_agent(tools=tools, llm=llm, prompt=custom_prompt_template)
 agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True)
+
+
 # Streamlit UI
+# Load sample queries from the text files
+lynch_queries = load_queries("lynch_queries.txt")
+general_queries = load_queries("smpc_queries.txt")
+
+# Section for Lynch Syndrome Guidelines Related Questions
+st.sidebar.subheader("Lynch Syndrome Patient Profiles for Prescribing")
+selected_query = st.sidebar.radio("Choose a medication-related query:", general_queries, key="general_query_radio")
+
+# Section for Medication Related Lynch Syndrome Cancer Patients
+st.sidebar.subheader("Lynch Syndrome Guidelines Queries")
+selected_med_query = st.sidebar.radio("Choose a guideline-related query:", lynch_queries, key="med_query_radio")
+
+
 st.title("Medical Query Assistant")
 # Initialize session state for chat history
+
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 
-query = st.text_area("Enter your query here:", height=200)
+# Display the selected query from the sidebar in the text area
+if selected_query and selected_query != "":
+    st.session_state['query'] = selected_query
+elif selected_med_query and selected_med_query != "":
+    st.session_state['query'] = selected_med_query
+
+query = st.text_area("Enter your query here:", value=st.session_state.get('query', ''), height=200)
+
+# Clear the selection after query is displayed
+if "query" in st.session_state:
+    del st.session_state["query"]
+
 if st.button("Submit Query"):
     with st.spinner("Processing your query..."):
         try:

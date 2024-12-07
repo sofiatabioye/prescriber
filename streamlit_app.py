@@ -18,7 +18,9 @@ warnings.filterwarnings("ignore", category=UserWarning, module="langsmith")
 logging.basicConfig(level=logging.INFO)
 
 # Initialize callback handler
-callback_handler = StreamlitCallbackHandler()
+response_placeholder = st.empty()
+callback_handler = StreamlitCallbackHandler(response_placeholder=response_placeholder)
+
 # Set up the callback manager
 callback_manager = CallbackManager(handlers=[callback_handler])
 
@@ -85,7 +87,7 @@ guidance_tool = create_query_tool("guidelines", "GuidanceQuery", "Search Guidanc
 journal_tool = create_query_tool("journals", "JournalQuery", "Search Journals Index.")
 
 # Initialize LLM and tools
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
+llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key, streaming=True)
 tools = [smpc_tool, guidance_tool, journal_tool]
 # Prompt setup
 prompt_template = ChatPromptTemplate.from_template(
@@ -100,14 +102,14 @@ custom_prompt_template = ChatPromptTemplate.from_template(
     "to queries related to SMPC, medical guidelines, and journal information.\n\n"
     "You have access to the following tools:\n"
     "{tools}\n\n"
-    "1. SMPC Query Tool: For searching the medication summary of product characteristics for information about any medication.\n"
-    "2. Guidance Query Tool: Should only be used when the query relates to Lynch syndrome for searching medical guidelines related to Lynch syndrome.\n"
-    "3. Journal Query Tool: Should only be used when the query relates to Lynch syndrome for searching medical journals related to Lynch syndrome.\n\n"
+    "1. SmpcQuery: For searching the medication summary of product characteristics for information about any medication.\n"
+    "2. GuidanceQuery: Should only be used when the query relates to Lynch syndrome for searching medical guidelines related to Lynch syndrome.\n"
+    "3. JournalQuery: Should only be used when the query relates to Lynch syndrome for searching medical journals related to Lynch syndrome.\n\n"
     "When you are uncertain or need specific information, you **must** use these tools to find relevant details. Never provide a final answer without first attempting to use the appropriate tools.\n\n"
     "Follow these steps:\n"
     "- Always first review the previous conversation to understand if there is missing context, such as a medication name or topic.\n"
-    "- If a medication name is mentioned in the current query or in the previous conversation, you **must** use the SMPC Query Tool to gather all relevant information about that medication.\n"
-    "- If the SMPC Query Tool does not provide specific information about the medication, **explicitly mention this as part of your reasoning**, and proceed with any other relevant actions.\n"
+    "- If a medication name is mentioned in the current query or in the previous conversation, you **must** use the SmpcQuery to gather all relevant information about that medication.\n"
+    "- If the SmpcQuery does not provide specific information about the medication, **explicitly mention this as part of your reasoning**, and proceed with any other relevant actions.\n"
     "- **Do not provide a Final Answer until all possible actions are taken.**\n"
     "- If the current query seems incomplete (e.g., missing medication name), try to infer it from the chat history.\n"
     "- If you cannot infer the missing details, ask the user to clarify before proceeding.\n"
@@ -131,70 +133,56 @@ custom_prompt_template = ChatPromptTemplate.from_template(
     "Final Answer: [Your response here]"
 )
 
-
-# Load the REACT prompt
-prompt = hub.pull("hwchase17/react")
-print(prompt, "prompt")
 # Create the REACT agent
 agent = create_react_agent(tools=tools, llm=llm, prompt=custom_prompt_template)
 agent_executor = AgentExecutor(agent=agent, tools=tools, handle_parsing_errors=True, verbose=True)
 
 
 # Streamlit UI
-# Load sample queries from the text files
+# Load sample queries
 lynch_queries = load_queries("lynch_queries.txt")
-general_queries = load_queries("smpc_queries.txt")
 
-# Section for Lynch Syndrome Guidelines Related Questions
-st.sidebar.subheader("Lynch Syndrome Patient Profiles for Prescribing")
-selected_query = st.sidebar.radio("Choose a medication-related query:", general_queries, key="general_query_radio")
+st.sidebar.title("Sample Queries")
 
-# Section for Medication Related Lynch Syndrome Cancer Patients
-st.sidebar.subheader("Lynch Syndrome Guidelines Queries")
-selected_med_query = st.sidebar.radio("Choose a guideline-related query:", lynch_queries, key="med_query_radio")
-
-
-st.title("Medical Query Assistant")
-# Initialize session state for chat history
+if 'query' not in st.session_state:
+    st.session_state['query'] = ""
 
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 
-# Display the selected query from the sidebar in the text area
+selected_query = st.sidebar.radio(
+    "Choose a medication-related query:", 
+    lynch_queries,
+    key="general_query_radio",
+)
+
+st.title("Medical Query Assistant")
+
+# Set the selected query if chosen from the sidebar
 if selected_query and selected_query != "":
     st.session_state['query'] = selected_query
-elif selected_med_query and selected_med_query != "":
-    st.session_state['query'] = selected_med_query
 
 query = st.text_area("Enter your query here:", value=st.session_state.get('query', ''), height=200)
 
-# Clear the selection after query is displayed
-if "query" in st.session_state:
-    del st.session_state["query"]
+final_answer_placeholder = st.empty()
 
 if st.button("Submit Query"):
     with st.spinner("Processing your query..."):
         try:
-            # Prepare the chat history string
-            chat_history = "\n".join(st.session_state['chat_history'])
-            # Invoke the agent with the query
-            response = agent_executor.invoke({
-                "input": query,
-                "chat_history": chat_history,
-            }, {"callbacks": [callback_handler]})
+            response = agent_executor.invoke(
+                {"input": query, "chat_history": "\n".join(st.session_state['chat_history'])},
+                {"callbacks": [callback_handler]}
+            )
 
-           # Extract and display the final response
             final_response = response['output']
-            st.success("Query Processed!")
-            st.text_area("Response", final_response, height=300)
+            # Display the final answer below the query input
+            final_answer_placeholder.text_area("Response", final_response, height=300)
 
-            # Update and store chat history
+            # Clear the previous "Please wait..." message from the callback handler placeholder
+            response_placeholder.markdown("")  # or response_placeholder.empty()
+            # Update chat history
             st.session_state['chat_history'].append(f"Human: {query}")
             st.session_state['chat_history'].append(f"AI: {final_response}")
-
-            # Display chat history
-            st.subheader("Chat History")
-            st.text_area("Chat History", chat_history + f"\nHuman: {query}\nAI: {final_response}", height=300)
 
             # Display logs
             logs = callback_handler.get_logs()
@@ -202,8 +190,8 @@ if st.button("Submit Query"):
                 log_content = "\n".join([f"<div>{log}</div>" for log in logs])
             else:
                 log_content = "<div>No intermediate steps captured.</div>"
+
             st.subheader("Intermediate Steps")
-            # Use custom HTML and CSS to make the container scrollable
             st.markdown(
                 f"""
                 <div style="height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
@@ -214,7 +202,6 @@ if st.button("Submit Query"):
             )
             
         except Exception as e:
-            # Log and display errors
             st.error(f"An error occurred: {e}")
             logging.error(f"Error occurred during query processing: {e}")
             logs = callback_handler.get_logs()

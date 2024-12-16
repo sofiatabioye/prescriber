@@ -1,5 +1,7 @@
+import requests
+
 class OllamaLlama:
-    def __init__(self, model="llama3:latest", port=12345):
+    def __init__(self, model="llama3:latest", port=11435):
         self.base_url = f"http://localhost:{port}"
         self.model = model
 

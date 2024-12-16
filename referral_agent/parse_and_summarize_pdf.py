@@ -6,7 +6,7 @@ import fitz  # PyMuPDF
 from pdf2image import convert_from_path
 import pytesseract
 from ollama_llama import OllamaLlama
-
+from langchain_community.llms import Ollama
 
 def extract_text_with_ocr(pdf_path):
     """Extracts text from a PDF using OCR for scanned pages."""
@@ -28,41 +28,92 @@ def parse_and_summarize_pdf(file_path):
     """Parses and summarizes a PDF file with mixed content."""
     # Step 1: Extract text (handles both selectable text and scanned images)
     raw_text = extract_text_with_ocr(file_path)
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=8000, chunk_overlap=100)
     split_docs = text_splitter.split_text(raw_text)
     
-    # llm = OllamaLlama(model="llama-2-7b-chat");
+    # llm = Ollama(model="llama3", base_url="http://localhost:11434")
+
     llm = ChatOpenAI(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         temperature=0.7,
     )
-
     summaries = []
+
     for chunk in split_docs:
         prompt = f"""
-            This text is from a 2WW referral form for colorectal cancer. Extract the following details:
-            1. Patient details (e.g., name, age, gender, address, hospital number).
-            2. GP declaration (if present)
-            3. GP/Doctor and referral date details
-            4. Symptoms (e.g., abdominal mass, rectal bleeding).
-            5. FIT result (positive or negative, and value if available).
-            6. FIT positive pathway results (tick-marked if present and explain the results recorded).
-            7. FIT negative patients with Iron Deficiency Anaemia results (tick-marked if present).
-            8. Additional history (if mentioned).
-            9. WHO performance status (on the WHO scale, tick-marked value).
+            This text is from a 2WW referral form for colorectal cancer. Extract the following details and format the output as a structured summary. Use the rules below to ensure accuracy:
+            0. ** FIT Result
+            - If the FIT result is less than 10 ugHb/g, this will be recorded as Negative, while greater than or equal to 10 ugHb/g will be Positive
+            1. **FIT Positive Pathway Results Rules**:
+            - For each parameter in the FIT positive pathway results (Rectal bleeding, Change in bowel habit, Weight loss, Iron Deficiency Anaemia), check if it is mentioned in the text.
+            - If the parameter is present and has a FIT value (e.g., 'FIT result: ...'), mark it as 'Yes' and include the FIT value.
+            - If the parameter is present without a FIT value, mark it as 'Yes' but indicate 'FIT value: Not provided'.
+            - If the parameter is not mentioned in the text, mark it as 'No'.
+
+            2. **FIT Negative Pathway Results Rules**:
+            - For FIT-negative patients with Iron Deficiency Anaemia (IDA), extract the following:
+                - Indicate if the patient meets all criteria for referral:
+                - Aged 40 years or over: Yes/No
+                - FIT Negative: Yes/No (This is a "Yes" if FIT result is less and 10), FIT result: [Value/Not provided]
+                - Ferritin ≤45 µg/L: Yes/No (This is a "Yes" if Ferritin value ≤45µg/L), Ferritin: [Value/Not provided]
+                - Anaemia: Yes/No (Yes if Hb value less than 130 g/L (13 g/dL) in men or 115 g/L (11.5 g/dL) in non-menstruating women). Ensure that Hb values reported in g/L are compared to thresholds directly in g/L, Hb: [Value/Not provided]
+                - Additional tests:
+                - Dipstick urine: [Positive/Negative/Not provided](If positive consider referral on urology 2WW)
+                - Screen for Coeliac disease: [Positive/Negative/Not provided](If positive refer to gastroenterology)
+                - Renal function: [Values for Urea, Creatinine, eGFR if provided] (MUST be within 3 months)
+                - Iron treatment: [Date commenced/Not provided]
+                - Other results (MCV, TTG): [Values/Not provided]
+                
+            3. **General Formatting Rules**:
+            - Provide a structured summary with the fields below.
+            - Use the following format for the output:
+                - Name: [Value]
+                - Age: [Value]
+                - Gender: [Value]
+                - Address: [Value]
+                - Hospital number: [Value]
+                - GP declaration: [Value]
+                - GP/Doctor details and referral date: [Value]
+                - Symptoms: [Value]
+                - FIT result: [Value], [Positive/Negative]
+                - FIT positive pathway results:
+                    - Rectal bleeding: [Yes/No], FIT result: [Value/Not provided]
+                    - Change in bowel habit: [Yes/No], FIT result: [Value/Not provided]
+                    - Weight loss: [Yes/No], FIT result: [Value/Not provided]
+                    - Iron Deficiency Anaemia: [Yes/No], FIT result: [Value/Not provided]
+                - FIT negative patients with Iron Deficiency Anaemia results: [Value]
+                - FIT negative pathway results:
+                    - Meets criteria for referral: [Yes/No]
+                    - Aged 40 years or over: [Yes/No]
+                    - FIT Negative: [Yes/No], FIT result: [Value/Not provided]
+                    - Ferritin ≤45 µg/L: [Yes/No], Ferritin: [Value/Not provided]
+                    - Anaemia: [Yes/No], Hb: [Value/Not provided]
+                    - Dipstick urine: [Positive/Negative/Not provided]
+                    - Screen for Coeliac disease: [Positive/Negative/Not provided]
+                    - Renal function: Urea: [Value/Not provided], Creatinine: [Value/Not provided], eGFR: [Value/Not provided]
+                    - Iron treatment commenced: [Date/Not provided]
+                    - MCV: [Value/Not provided], TTG: [Value/Not provided]
+                - WHO Performance status: [Value]
+                - Additional History: [Value]
 
             Text:
             {chunk}
             """
-        response = llm.invoke(prompt)
-        print(response)
-        summaries.append(response.content if hasattr(response, 'content') else str(response))
 
-    return " ".join(summaries)
+        response = llm.invoke(prompt)
+        result = response.content if hasattr(response, "content") else str(response)
+        # print(result)
+        summaries.append(result);
+        # Skip irrelevant chunks
+        if "does not contain any of this specific information" in result:
+            continue
+    # Format the final structured summary
+    formatted_summary = "\n".join(summaries)
+    return formatted_summary
 
 # Example Usage
 if __name__ == "__main__":
-    file_path = "form2.pdf"  # Replace with the path to your PDF file
+    file_path = "form5.pdf"  # Replace with the path to your PDF file
     summarized_text = parse_and_summarize_pdf(file_path)
     print("Summarized Content:")
     print(summarized_text)
